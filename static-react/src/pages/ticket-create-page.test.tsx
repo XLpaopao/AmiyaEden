@@ -1,4 +1,5 @@
-﻿import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+﻿import userEvent from '@testing-library/user-event'
+import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { RouterProvider, createMemoryRouter } from 'react-router-dom'
 import { appRoutes } from '@/app/router'
 import { I18nProvider } from '@/i18n'
@@ -171,10 +172,15 @@ describe('ticket create page', () => {
       expect(document.querySelectorAll('[data-slot="select-trigger"]')).toHaveLength(2)
     )
     const categorySelect = document.querySelector('[data-slot="select-trigger"]') as HTMLElement
-    fireEvent.click(categorySelect)
-    const option = await screen.findByRole('option', { name: 'Support' }, { timeout: 8000 })
+    // `fireEvent.click` dispatches a lone click event. React Aria's Select needs the
+    // full pointer sequence to open its popover; under CPU contention that single
+    // event can be dropped and the option never renders. `userEvent.click` sends the
+    // complete chain, keeping this interaction deterministic on loaded CI runners.
+    const user = userEvent.setup()
+    await user.click(categorySelect)
+    const option = await screen.findByRole('option', { name: 'Support' })
     expect(option).toBeInTheDocument()
-    fireEvent.click(option)
+    await user.click(option)
     expect(screen.getByPlaceholderText('Enter ticket title')).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Submit Ticket' })).toBeInTheDocument()
   }, 15000)
